@@ -7,10 +7,12 @@ import (
 
 type Message struct {
 	Header
-	KeyGen1 *KeyGen1
-	KeyGen2 *KeyGen2
-	Sign1   *Sign1
-	Sign2   *Sign2
+	KeyGen1        *KeyGen1
+	KeyGen2        *KeyGen2
+	PreSignRequest *PreSignRequest
+	SignRequest    *SignRequest
+	Sign1          *Sign1
+	Sign2          *Sign2
 }
 
 var ErrInvalidMessage = errors.New("invalid message")
@@ -22,6 +24,8 @@ const (
 	MessageTypeNone MessageType = iota
 	MessageTypeKeyGen1
 	MessageTypeKeyGen2
+	MessageTypePreSignRequest
+	MessageTypeSignRequest
 	MessageTypeSign1
 	MessageTypeSign2
 )
@@ -31,7 +35,6 @@ func (m *Message) BytesAppend(existing []byte) (data []byte, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("message.BytesAppend: %w", err)
 	}
-
 	switch m.Type {
 	case MessageTypeKeyGen1:
 		if m.KeyGen1 != nil {
@@ -40,6 +43,14 @@ func (m *Message) BytesAppend(existing []byte) (data []byte, err error) {
 	case MessageTypeKeyGen2:
 		if m.KeyGen2 != nil {
 			return m.KeyGen2.BytesAppend(existing)
+		}
+	case MessageTypePreSignRequest:
+		if m.PreSignRequest != nil {
+			return m.PreSignRequest.BytesAppend(existing)
+		}
+	case MessageTypeSignRequest:
+		if m.SignRequest != nil {
+			return m.SignRequest.BytesAppend(existing)
 		}
 	case MessageTypeSign1:
 		if m.Sign1 != nil {
@@ -64,6 +75,10 @@ func (m *Message) Size() int {
 	case MessageTypeKeyGen2:
 		if m.KeyGen2 != nil {
 			size = m.KeyGen2.Size()
+		}
+	case MessageTypePreSignRequest:
+		if m.SignRequest != nil {
+			return m.SignRequest.Size()
 		}
 	case MessageTypeSign1:
 		if m.Sign1 != nil {
@@ -104,7 +119,16 @@ func (m *Message) UnmarshalBinary(data []byte) error {
 		if err = keygen2.UnmarshalBinary(data); err == nil {
 			m.KeyGen2 = &keygen2
 		}
-
+	case MessageTypePreSignRequest:
+		var preSignRequest PreSignRequest
+		if err = preSignRequest.UnmarshalBinary(data); err == nil {
+			m.PreSignRequest = &preSignRequest
+		}
+	case MessageTypeSignRequest:
+		var signRequest SignRequest
+		if err = signRequest.UnmarshalBinary(data); err == nil {
+			m.SignRequest = &signRequest
+		}
 	case MessageTypeSign1:
 		var sign1 Sign1
 		if err = sign1.UnmarshalBinary(data); err == nil {
